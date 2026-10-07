@@ -102,6 +102,62 @@ class MainViewModel(
         }
     }
 
+    val expenseBreakdownByCategory: StateFlow<List<CategoryBreakdownItem>> = combine(
+        allTransactions,
+        categories
+    ) { transactions, cats ->
+        val expenseTxs = transactions.filter { it.type == "DEBIT" && it.status != "EXCLUDED" }
+        val totalExpense = expenseTxs.sumOf { it.amount }
+        if (totalExpense <= 0.0) return@combine emptyList()
+
+        val catMap = cats.associateBy { it.id }
+        val grouped = expenseTxs.groupBy { it.categoryId }
+
+        grouped.map { (catId, txs) ->
+            val cat = catId?.let { catMap[it] }
+            val sum = txs.sumOf { it.amount }
+            val percent = if (totalExpense > 0) ((sum / totalExpense) * 100).toFloat() else 0f
+            CategoryBreakdownItem(
+                categoryId = catId,
+                categoryName = cat?.name ?: "Uncategorized",
+                colorHex = cat?.colorHex ?: "#78909C",
+                totalAmount = sum,
+                percentage = percent
+            )
+        }.sortedByDescending { it.totalAmount }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateAccount(account: AccountEntity) {
+        viewModelScope.launch {
+            accountRepository.updateAccount(account)
+        }
+    }
+
+    fun deleteAccount(account: AccountEntity) {
+        viewModelScope.launch {
+            accountRepository.deleteAccount(account)
+        }
+    }
+
+    fun addCategory(name: String, type: String, iconKey: String? = null, colorHex: String? = null) {
+        viewModelScope.launch {
+            val category = CategoryEntity(
+                id = UUID.randomUUID().toString(),
+                name = name.trim(),
+                type = type,
+                iconKey = iconKey,
+                colorHex = colorHex
+            )
+            categoryRepository.addCategory(category)
+        }
+    }
+
+    fun deleteCategory(category: CategoryEntity) {
+        viewModelScope.launch {
+            categoryRepository.deleteCategory(category)
+        }
+    }
+
     fun addAccount(name: String, type: AccountType, currency: String, balance: Double, mask: String?) {
         viewModelScope.launch {
             val account = AccountEntity(
@@ -116,3 +172,11 @@ class MainViewModel(
         }
     }
 }
+
+data class CategoryBreakdownItem(
+    val categoryId: String?,
+    val categoryName: String,
+    val colorHex: String?,
+    val totalAmount: Double,
+    val percentage: Float
+)

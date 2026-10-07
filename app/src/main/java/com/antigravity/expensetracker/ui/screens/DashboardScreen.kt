@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -25,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -37,19 +41,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.antigravity.expensetracker.data.model.TransactionType
+import com.antigravity.expensetracker.ui.components.AddTransactionDialog
+import com.antigravity.expensetracker.ui.components.CategoryPieChartCard
 import com.antigravity.expensetracker.ui.components.SimulationDialog
 import com.antigravity.expensetracker.ui.components.SummaryCard
 import com.antigravity.expensetracker.ui.components.TransactionCard
 import com.antigravity.expensetracker.ui.viewmodel.MainViewModel
+import androidx.compose.foundation.ExperimentalFoundationApi
 import com.antigravity.expensetracker.util.PermissionHelper
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     viewModel: MainViewModel,
@@ -58,17 +66,24 @@ fun DashboardScreen(
     val context = LocalContext.current
     val transactions by viewModel.filteredTransactions.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val categories by viewModel.categories.collectAsState()
     val totalExpenses by viewModel.totalExpenses.collectAsState()
     val totalIncome by viewModel.totalIncome.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val expenseBreakdown by viewModel.expenseBreakdownByCategory.collectAsState()
 
     var showSimulationDialog by remember { mutableStateOf(false) }
+    var showAddTransactionDialog by remember { mutableStateOf(false) }
+
     var isPermissionGranted by remember {
         mutableStateOf(PermissionHelper.isNotificationAccessGranted(context))
     }
 
     val totalBalance = accounts.sumOf { it.currentBalance }
+    val defaultCurrency = accounts.firstOrNull()?.currency ?: "VND"
+
+    val pagerState = rememberPagerState(pageCount = { 2 })
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -129,12 +144,47 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Balance Summary
-                SummaryCard(
-                    totalBalance = totalBalance,
-                    totalIncome = totalIncome,
-                    totalExpenses = totalExpenses
-                )
+                // Swipeable Header (Swipe right/left between Balance Summary and Category Pie Chart)
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth()
+                ) { page ->
+                    if (page == 0) {
+                        SummaryCard(
+                            totalBalance = totalBalance,
+                            totalIncome = totalIncome,
+                            totalExpenses = totalExpenses,
+                            currency = defaultCurrency
+                        )
+                    } else {
+                        CategoryPieChartCard(
+                            items = expenseBreakdown,
+                            currency = defaultCurrency
+                        )
+                    }
+                }
+
+                // Page indicator dots
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    repeat(2) { pageIndex ->
+                        val isSelected = pagerState.currentPage == pageIndex
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .size(if (isSelected) 8.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                                )
+                        )
+                    }
+                }
             }
 
             // Quick Actions & Search
@@ -197,6 +247,16 @@ fun DashboardScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+
+                    IconButton(
+                        onClick = { showSimulationDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = "Simulate Bank Alert",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 
@@ -217,7 +277,7 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Tap the + button to simulate a notification or add one.",
+                                text = "Tap the + button to add a transaction manually or simulate alerts.",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                             )
@@ -238,21 +298,42 @@ fun DashboardScreen(
             }
         }
 
-        // Floating Action Button to trigger test simulator
+        // Floating Action Button to Add Transaction Manually
         FloatingActionButton(
-            onClick = { showSimulationDialog = true },
+            onClick = { showAddTransactionDialog = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp),
             containerColor = MaterialTheme.colorScheme.primary
         ) {
             Icon(
-                imageVector = Icons.Default.NotificationsActive,
-                contentDescription = "Simulate Bank Alert"
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add Transaction"
             )
         }
     }
 
+    // Manual Transaction Dialog
+    if (showAddTransactionDialog) {
+        AddTransactionDialog(
+            accounts = accounts,
+            categories = categories,
+            onDismiss = { showAddTransactionDialog = false },
+            onAddTransaction = { accId, amount, curr, type, counterparty, catId, destId ->
+                viewModel.addManualTransaction(
+                    accountId = accId,
+                    amount = amount,
+                    currency = curr,
+                    type = type,
+                    counterparty = counterparty,
+                    categoryId = catId,
+                    destinationAccountId = destId
+                )
+            }
+        )
+    }
+
+    // Simulation Dialog
     if (showSimulationDialog) {
         SimulationDialog(
             onDismiss = { showSimulationDialog = false },

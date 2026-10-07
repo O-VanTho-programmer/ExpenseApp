@@ -13,4 +13,8 @@ class CategoryRepository(private val categoryDao: CategoryDao) {
     }
 
     suspend fun getCategoryByName(name: String): CategoryEntity? = categoryDao.getCategoryByName(name)
+
+    suspend fun deleteCategory(category: CategoryEntity) {
+        categoryDao.delete(category)
+    }
 }
