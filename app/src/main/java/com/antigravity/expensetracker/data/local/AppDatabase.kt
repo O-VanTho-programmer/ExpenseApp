@@ -21,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.sqlcipher.database.SupportFactory
 
+import androidx.room.migration.Migration
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -28,7 +30,7 @@ import net.sqlcipher.database.SupportFactory
         TransactionEntity::class,
         ParsingRuleEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,6 +42,12 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         private const val DATABASE_NAME = "expense_tracker_secure.db"
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE accounts ADD COLUMN saving_sub_type TEXT")
+            }
+        }
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -56,6 +64,8 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
+                .addMigrations(MIGRATION_1_2)
+                .fallbackToDestructiveMigration()
 
             if (useEncryption) {
                 try {
@@ -106,6 +116,34 @@ abstract class AppDatabase : RoomDatabase() {
                     currency = "VND",
                     currentBalance = 1000000.0,
                     identifierMask = null
+                ),
+                // Dedicated Savings & Investment accounts (not accumulated in liquid balance)
+                AccountEntity(
+                    id = "acc_saving_stocks_04",
+                    name = "Techcom Securities (TCBS)",
+                    type = AccountType.SAVINGS.name,
+                    currency = "VND",
+                    currentBalance = 50000000.0,
+                    identifierMask = null,
+                    savingSubType = "STOCKS"
+                ),
+                AccountEntity(
+                    id = "acc_saving_funds_05",
+                    name = "Dragon Capital Fund (DCDS)",
+                    type = AccountType.SAVINGS.name,
+                    currency = "VND",
+                    currentBalance = 30000000.0,
+                    identifierMask = null,
+                    savingSubType = "MUTUAL_FUNDS"
+                ),
+                AccountEntity(
+                    id = "acc_saving_bonds_06",
+                    name = "Corporate Bond Portfolio",
+                    type = AccountType.SAVINGS.name,
+                    currency = "VND",
+                    currentBalance = 20000000.0,
+                    identifierMask = null,
+                    savingSubType = "BONDS"
                 )
             )
             database.accountDao().insertAll(defaultAccounts)

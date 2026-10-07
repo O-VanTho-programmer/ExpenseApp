@@ -53,8 +53,8 @@ fun SummaryCard(
         ) {
             Column {
                 Text(
-                    text = "Total Balance",
-                    color = Color.White.copy(alpha = 0.8f),
+                    text = "Available Balance (Liquid)",
+                    color = Color.White.copy(alpha = 0.85f),
                     fontSize = 14.sp
                 )
                 Spacer(modifier = Modifier.height(6.dp))

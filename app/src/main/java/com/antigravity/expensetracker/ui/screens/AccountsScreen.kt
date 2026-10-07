@@ -99,8 +99,8 @@ fun AccountsScreen(
             initialAccount = null,
             defaultCurrency = defaultCurrency,
             onDismiss = { showAddAccountDialog = false },
-            onSave = { name, type, curr, bal, mask ->
-                viewModel.addAccount(name, type, curr, bal, mask)
+            onSave = { name, type, curr, bal, mask, savingSubType ->
+                viewModel.addAccount(name, type, curr, bal, mask, savingSubType)
             }
         )
     }
@@ -110,14 +110,15 @@ fun AccountsScreen(
         AccountFormDialog(
             initialAccount = account,
             onDismiss = { accountToEdit = null },
-            onSave = { name, type, curr, bal, mask ->
+            onSave = { name, type, curr, bal, mask, savingSubType ->
                 viewModel.updateAccount(
                     account.copy(
                         name = name,
                         type = type.name,
                         currency = curr,
                         currentBalance = bal,
-                        identifierMask = mask
+                        identifierMask = mask,
+                        savingSubType = if (type == com.antigravity.expensetracker.data.model.AccountType.SAVINGS) savingSubType else null
                     )
                 )
             }

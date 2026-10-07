@@ -31,10 +31,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.antigravity.expensetracker.data.local.entity.AccountEntity
+import com.antigravity.expensetracker.data.model.SavingSubType
 import com.antigravity.expensetracker.util.CurrencyFormatter
 
 @Composable
@@ -68,15 +70,19 @@ fun AccountCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val isSavings = account.type == "SAVINGS"
+                    val subType = if (isSavings) SavingSubType.fromString(account.savingSubType) else null
+                    val typeLabel = if (subType != null) "SAVINGS • ${subType.icon} ${subType.displayName}" else account.type
+
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        color = if (isSavings) Color(0xFF0D9488).copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            text = account.type,
+                            text = typeLabel,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = if (isSavings) Color(0xFF0F766E) else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }

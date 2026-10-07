@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.antigravity.expensetracker.data.local.entity.AccountEntity
 import com.antigravity.expensetracker.data.model.AccountType
+import com.antigravity.expensetracker.data.model.SavingSubType
 import com.antigravity.expensetracker.util.CurrencyFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,8 +40,9 @@ import com.antigravity.expensetracker.util.CurrencyFormatter
 fun AccountFormDialog(
     initialAccount: AccountEntity? = null,
     defaultCurrency: String = "VND",
+    defaultType: AccountType = AccountType.CHECKING,
     onDismiss: () -> Unit,
-    onSave: (name: String, type: AccountType, currency: String, balance: Double, mask: String?) -> Unit
+    onSave: (name: String, type: AccountType, currency: String, balance: Double, mask: String?, savingSubType: String?) -> Unit
 ) {
     val isEditing = initialAccount != null
     val focusManager = LocalFocusManager.current
@@ -48,13 +50,21 @@ fun AccountFormDialog(
     var name by remember { mutableStateOf(initialAccount?.name ?: "") }
     var selectedType by remember {
         mutableStateOf(
-            try {
-                AccountType.valueOf(initialAccount?.type ?: "CHECKING")
-            } catch (e: Exception) {
-                AccountType.CHECKING
-            }
+            initialAccount?.let {
+                try {
+                    AccountType.valueOf(it.type)
+                } catch (e: Exception) {
+                    AccountType.CHECKING
+                }
+            } ?: defaultType
         )
     }
+    var selectedSavingSubType by remember {
+        mutableStateOf(
+            SavingSubType.fromString(initialAccount?.savingSubType) ?: SavingSubType.STOCKS
+        )
+    }
+    var savingSubTypeExpanded by remember { mutableStateOf(false) }
     var selectedCurrency by remember { mutableStateOf(initialAccount?.currency ?: defaultCurrency) }
     var balanceText by remember {
         mutableStateOf(
@@ -144,6 +154,42 @@ fun AccountFormDialog(
                                     typeExpanded = false
                                 }
                             )
+                        }
+                    }
+                }
+
+                // If SAVINGS account, show Asset / Investment Sub-Type selector
+                if (selectedType == AccountType.SAVINGS) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = savingSubTypeExpanded,
+                        onExpandedChange = { savingSubTypeExpanded = !savingSubTypeExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = "${selectedSavingSubType.icon} ${selectedSavingSubType.displayName}",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Asset / Investment Category *") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = savingSubTypeExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = savingSubTypeExpanded,
+                            onDismissRequest = { savingSubTypeExpanded = false }
+                        ) {
+                            SavingSubType.values().forEach { subType ->
+                                DropdownMenuItem(
+                                    text = { Text("${subType.icon} ${subType.displayName}") },
+                                    onClick = {
+                                        selectedSavingSubType = subType
+                                        savingSubTypeExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -260,12 +306,14 @@ fun AccountFormDialog(
                 onClick = {
                     if (canSubmit) {
                         val amount = parsedBalance ?: 0.0
+                        val subTypeStr = if (selectedType == AccountType.SAVINGS) selectedSavingSubType.name else null
                         onSave(
                             name.trim(),
                             selectedType,
                             selectedCurrency,
                             amount,
-                            maskText.trim().ifBlank { null }
+                            maskText.trim().ifBlank { null },
+                            subTypeStr
                         )
                         onDismiss()
                     } else {

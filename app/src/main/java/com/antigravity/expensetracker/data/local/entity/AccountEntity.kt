@@ -15,5 +15,7 @@ data class AccountEntity(
     @ColumnInfo(name = "current_balance")
     val currentBalance: Double = 0.0,
     @ColumnInfo(name = "identifier_mask")
-    val identifierMask: String? = null
+    val identifierMask: String? = null,
+    @ColumnInfo(name = "saving_sub_type")
+    val savingSubType: String? = null // STOCKS, MUTUAL_FUNDS, BONDS, TERM_DEPOSIT, OTHER
 )

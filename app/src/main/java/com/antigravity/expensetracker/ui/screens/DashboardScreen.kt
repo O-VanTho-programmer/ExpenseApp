@@ -47,14 +47,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.antigravity.expensetracker.data.local.entity.AccountEntity
+import com.antigravity.expensetracker.data.model.AccountType
 import com.antigravity.expensetracker.data.model.TransactionType
+import com.antigravity.expensetracker.ui.components.AccountFormDialog
 import com.antigravity.expensetracker.ui.components.AddTransactionDialog
 import com.antigravity.expensetracker.ui.components.CategoryPieChartCard
+import com.antigravity.expensetracker.ui.components.SavingsHeaderCard
+import com.antigravity.expensetracker.ui.components.SavingsPortfolioDialog
 import com.antigravity.expensetracker.ui.components.SimulationDialog
 import com.antigravity.expensetracker.ui.components.SummaryCard
 import com.antigravity.expensetracker.ui.components.TransactionCard
 import com.antigravity.expensetracker.ui.viewmodel.MainViewModel
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import com.antigravity.expensetracker.util.PermissionHelper
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -66,6 +74,9 @@ fun DashboardScreen(
     val context = LocalContext.current
     val transactions by viewModel.filteredTransactions.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val liquidBalance by viewModel.liquidBalance.collectAsState()
+    val savingsBalance by viewModel.savingsBalance.collectAsState()
+    val savingsAccounts by viewModel.savingsAccounts.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val totalExpenses by viewModel.totalExpenses.collectAsState()
     val totalIncome by viewModel.totalIncome.collectAsState()
@@ -75,12 +86,15 @@ fun DashboardScreen(
 
     var showSimulationDialog by remember { mutableStateOf(false) }
     var showAddTransactionDialog by remember { mutableStateOf(false) }
+    var showSavingsPortfolio by remember { mutableStateOf(false) }
+    var showAddSavingsAccountDialog by remember { mutableStateOf(false) }
+    var accountToEdit by remember { mutableStateOf<AccountEntity?>(null) }
+    var accountToDelete by remember { mutableStateOf<AccountEntity?>(null) }
 
     var isPermissionGranted by remember {
         mutableStateOf(PermissionHelper.isNotificationAccessGranted(context))
     }
 
-    val totalBalance = accounts.sumOf { it.currentBalance }
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
 
     val pagerState = rememberPagerState(pageCount = { 2 })
@@ -151,7 +165,7 @@ fun DashboardScreen(
                 ) { page ->
                     if (page == 0) {
                         SummaryCard(
-                            totalBalance = totalBalance,
+                            totalBalance = liquidBalance,
                             totalIncome = totalIncome,
                             totalExpenses = totalExpenses,
                             currency = defaultCurrency
@@ -185,6 +199,16 @@ fun DashboardScreen(
                         )
                     }
                 }
+            }
+
+            // Savings & Investment Header Card (Isolated from liquid balance)
+            item {
+                SavingsHeaderCard(
+                    savingsBalance = savingsBalance,
+                    holdingCount = savingsAccounts.size,
+                    currency = defaultCurrency,
+                    onClick = { showSavingsPortfolio = true }
+                )
             }
 
             // Quick Actions & Search
@@ -340,6 +364,90 @@ fun DashboardScreen(
             onDismiss = { showSimulationDialog = false },
             onSimulate = { pkg, title, content ->
                 viewModel.simulateNotification(pkg, title, content)
+            }
+        )
+    }
+
+    // Savings & Investment Portfolio View / Dialog
+    if (showSavingsPortfolio) {
+        SavingsPortfolioDialog(
+            savingsAccounts = savingsAccounts,
+            totalSavingsBalance = savingsBalance,
+            currency = defaultCurrency,
+            onDismiss = { showSavingsPortfolio = false },
+            onAddNewAsset = {
+                showAddSavingsAccountDialog = true
+            },
+            onEditAccount = { accountToEdit = it },
+            onDeleteAccount = { accountToDelete = it }
+        )
+    }
+
+    // Add New Savings / Investment Holding Dialog
+    if (showAddSavingsAccountDialog) {
+        AccountFormDialog(
+            initialAccount = null,
+            defaultCurrency = defaultCurrency,
+            defaultType = AccountType.SAVINGS,
+            onDismiss = { showAddSavingsAccountDialog = false },
+            onSave = { name, type, curr, bal, mask, savingSubType ->
+                viewModel.addAccount(name, type, curr, bal, mask, savingSubType)
+            }
+        )
+    }
+
+    // Edit Holding Dialog from Portfolio View
+    accountToEdit?.let { account ->
+        AccountFormDialog(
+            initialAccount = account,
+            defaultCurrency = defaultCurrency,
+            defaultType = AccountType.SAVINGS,
+            onDismiss = { accountToEdit = null },
+            onSave = { name, type, curr, bal, mask, savingSubType ->
+                viewModel.updateAccount(
+                    account.copy(
+                        name = name,
+                        type = type.name,
+                        currency = curr,
+                        currentBalance = bal,
+                        identifierMask = mask,
+                        savingSubType = if (type == AccountType.SAVINGS) savingSubType else null
+                    )
+                )
+            }
+        )
+    }
+
+    // Delete Holding Confirmation Dialog from Portfolio View
+    accountToDelete?.let { account ->
+        AlertDialog(
+            onDismissRequest = { accountToDelete = null },
+            title = {
+                Text(
+                    text = "Delete Asset?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text("Are you sure you want to remove \"${account.name}\" from your portfolio?")
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        viewModel.deleteAccount(account)
+                        accountToDelete = null
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { accountToDelete = null }) {
+                    Text("Cancel")
+                }
             }
         )
     }

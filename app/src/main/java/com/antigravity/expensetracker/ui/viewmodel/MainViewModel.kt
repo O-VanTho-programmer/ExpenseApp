@@ -13,13 +13,14 @@ import com.antigravity.expensetracker.data.repository.TransactionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 import com.antigravity.expensetracker.data.settings.SettingsManager
-import kotlinx.coroutines.flow.asStateFlow
 
 class MainViewModel(
     private val transactionRepository: TransactionRepository,
@@ -44,6 +45,22 @@ class MainViewModel(
 
     val accounts: StateFlow<List<AccountEntity>> = accountRepository.getAllAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val liquidAccounts: StateFlow<List<AccountEntity>> = accounts
+        .map { list -> list.filter { it.type != AccountType.SAVINGS.name } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val savingsAccounts: StateFlow<List<AccountEntity>> = accounts
+        .map { list -> list.filter { it.type == AccountType.SAVINGS.name } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val liquidBalance: StateFlow<Double> = accounts
+        .map { list -> list.filter { it.type != AccountType.SAVINGS.name }.sumOf { it.currentBalance } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val savingsBalance: StateFlow<Double> = accounts
+        .map { list -> list.filter { it.type == AccountType.SAVINGS.name }.sumOf { it.currentBalance } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     val categories: StateFlow<List<CategoryEntity>> = categoryRepository.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -173,7 +190,14 @@ class MainViewModel(
         }
     }
 
-    fun addAccount(name: String, type: AccountType, currency: String, balance: Double, mask: String?) {
+    fun addAccount(
+        name: String,
+        type: AccountType,
+        currency: String,
+        balance: Double,
+        mask: String?,
+        savingSubType: String? = null
+    ) {
         viewModelScope.launch {
             val account = AccountEntity(
                 id = UUID.randomUUID().toString(),
@@ -181,7 +205,8 @@ class MainViewModel(
                 type = type.name,
                 currency = currency,
                 currentBalance = balance,
-                identifierMask = mask?.ifBlank { null }
+                identifierMask = mask?.ifBlank { null },
+                savingSubType = if (type == AccountType.SAVINGS) savingSubType else null
             )
             accountRepository.addAccount(account)
         }
