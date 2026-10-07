@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Antigravity Expense Tracker</string>
+    <string name="notification_listener_label">Expense Tracker Ingestion Service</string>
+    <string name="notification_access_title">Notification Access Required</string>
+    <string name="notification_access_desc">Enable notification access so the app can automatically parse your expense and income alerts in real time.</string>
+    <string name="grant_permission">Grant Access</string>
+</resources>
