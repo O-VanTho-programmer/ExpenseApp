@@ -12,7 +12,8 @@ class ViewModelFactory(private val app: ExpenseTrackerApp) : ViewModelProvider.F
             return MainViewModel(
                 transactionRepository = app.transactionRepository,
                 accountRepository = app.accountRepository,
-                categoryRepository = app.categoryRepository
+                categoryRepository = app.categoryRepository,
+                settingsManager = app.settingsManager
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

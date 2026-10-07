@@ -85,26 +85,26 @@ abstract class AppDatabase : RoomDatabase() {
             val defaultAccounts = listOf(
                 AccountEntity(
                     id = "acc_checking_01",
-                    name = "Primary Checking",
+                    name = "Vietcombank Checking",
                     type = AccountType.CHECKING.name,
-                    currency = "USD",
-                    currentBalance = 2450.00,
+                    currency = "VND",
+                    currentBalance = 25000000.0,
                     identifierMask = "4242"
                 ),
                 AccountEntity(
                     id = "acc_wallet_02",
-                    name = "Fintech e-Wallet",
+                    name = "MoMo e-Wallet",
                     type = AccountType.WALLET.name,
-                    currency = "USD",
-                    currentBalance = 380.50,
+                    currency = "VND",
+                    currentBalance = 2500000.0,
                     identifierMask = "9876"
                 ),
                 AccountEntity(
                     id = "acc_cash_03",
-                    name = "Cash",
+                    name = "Cash Reserves",
                     type = AccountType.CASH.name,
-                    currency = "USD",
-                    currentBalance = 150.00,
+                    currency = "VND",
+                    currentBalance = 1000000.0,
                     identifierMask = null
                 )
             )

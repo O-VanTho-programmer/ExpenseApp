@@ -31,7 +31,7 @@ fun SummaryCard(
     totalBalance: Double,
     totalIncome: Double,
     totalExpenses: Double,
-    currency: String = "USD"
+    currency: String = "VND"
 ) {
     Card(
         modifier = Modifier

@@ -38,6 +38,7 @@ import com.antigravity.expensetracker.util.CurrencyFormatter
 @Composable
 fun AccountFormDialog(
     initialAccount: AccountEntity? = null,
+    defaultCurrency: String = "VND",
     onDismiss: () -> Unit,
     onSave: (name: String, type: AccountType, currency: String, balance: Double, mask: String?) -> Unit
 ) {
@@ -54,7 +55,7 @@ fun AccountFormDialog(
             }
         )
     }
-    var selectedCurrency by remember { mutableStateOf(initialAccount?.currency ?: "VND") }
+    var selectedCurrency by remember { mutableStateOf(initialAccount?.currency ?: defaultCurrency) }
     var balanceText by remember {
         mutableStateOf(
             if (initialAccount != null) {

@@ -11,6 +11,7 @@ class ExpenseTrackerApp : Application() {
     val database by lazy { AppDatabase.getInstance(this) }
     val accountRepository by lazy { AccountRepository(database.accountDao()) }
     val categoryRepository by lazy { CategoryRepository(database.categoryDao()) }
+    val settingsManager by lazy { com.antigravity.expensetracker.data.settings.SettingsManager(this) }
     val transactionRepository by lazy {
         TransactionRepository(
             transactionDao = database.transactionDao(),

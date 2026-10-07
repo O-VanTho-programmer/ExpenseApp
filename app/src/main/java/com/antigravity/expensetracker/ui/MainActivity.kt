@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +61,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             ExpenseTrackerTheme {
                 var currentTab by remember { mutableStateOf<NavTab>(NavTab.Dashboard) }
+                var showSettingsDialog by remember { mutableStateOf(false) }
+                val defaultCurrency by viewModel.defaultCurrency.collectAsState()
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -72,6 +76,16 @@ class MainActivity : ComponentActivity() {
                                         text = currentTab.title,
                                         fontWeight = FontWeight.Bold
                                     )
+                                },
+                                actions = {
+                                    androidx.compose.material3.IconButton(
+                                        onClick = { showSettingsDialog = true }
+                                    ) {
+                                        Icon(
+                                            imageVector = androidx.compose.material.icons.Icons.Default.Settings,
+                                            contentDescription = "General Settings"
+                                        )
+                                    }
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
                                     containerColor = MaterialTheme.colorScheme.surface
@@ -104,6 +118,14 @@ class MainActivity : ComponentActivity() {
                             NavTab.Categories -> CategoriesScreen(viewModel = viewModel, modifier = modifier)
                             NavTab.Simulator -> SimulationScreen(viewModel = viewModel, modifier = modifier)
                         }
+                    }
+
+                    if (showSettingsDialog) {
+                        com.antigravity.expensetracker.ui.components.GeneralSettingsDialog(
+                            currentCurrency = defaultCurrency,
+                            onDismiss = { showSettingsDialog = false },
+                            onSaveCurrency = { viewModel.setDefaultCurrency(it) }
+                        )
                     }
                 }
             }

@@ -81,7 +81,7 @@ fun DashboardScreen(
     }
 
     val totalBalance = accounts.sumOf { it.currentBalance }
-    val defaultCurrency = accounts.firstOrNull()?.currency ?: "VND"
+    val defaultCurrency by viewModel.defaultCurrency.collectAsState()
 
     val pagerState = rememberPagerState(pageCount = { 2 })
 
@@ -318,6 +318,7 @@ fun DashboardScreen(
         AddTransactionDialog(
             accounts = accounts,
             categories = categories,
+            defaultCurrency = defaultCurrency,
             onDismiss = { showAddTransactionDialog = false },
             onAddTransaction = { accId, amount, curr, type, counterparty, catId, destId ->
                 viewModel.addManualTransaction(

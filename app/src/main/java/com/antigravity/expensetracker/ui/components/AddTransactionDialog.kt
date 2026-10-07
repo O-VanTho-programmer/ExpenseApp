@@ -15,15 +15,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,6 +51,7 @@ import com.antigravity.expensetracker.util.CurrencyFormatter
 fun AddTransactionDialog(
     accounts: List<AccountEntity>,
     categories: List<CategoryEntity>,
+    defaultCurrency: String = "VND",
     onDismiss: () -> Unit,
     onAddTransaction: (
         accountId: String,
@@ -83,7 +86,7 @@ fun AddTransactionDialog(
     var categoryExpanded by remember { mutableStateOf(false) }
     var showErrors by remember { mutableStateOf(false) }
 
-    val activeCurrency = selectedAccount?.currency ?: "VND"
+    val activeCurrency = selectedAccount?.currency ?: defaultCurrency
     val parsedAmount = CurrencyFormatter.parseInputToAmount(amountText)
     val isAmountValid = parsedAmount != null && parsedAmount > 0.0
     val isCounterpartyValid = counterparty.isNotBlank()
@@ -104,38 +107,56 @@ fun AddTransactionDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                // Transaction Type Selector (Expense, Income, Transfer)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Transaction Type Selector (Expense, Income, Transfer) - Custom Pill Segmented Control
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    FilterChip(
-                        selected = selectedType == TransactionType.DEBIT,
-                        onClick = {
-                            selectedType = TransactionType.DEBIT
-                            selectedCategory = categories.firstOrNull { it.type == "EXPENSE" }
-                        },
-                        label = { Text("Expense") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = selectedType == TransactionType.CREDIT,
-                        onClick = {
-                            selectedType = TransactionType.CREDIT
-                            selectedCategory = categories.firstOrNull { it.type == "INCOME" }
-                        },
-                        label = { Text("Income") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = selectedType == TransactionType.TRANSFER,
-                        onClick = {
-                            selectedType = TransactionType.TRANSFER
-                            selectedCategory = null
-                        },
-                        label = { Text("Transfer") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        listOf(
+                            Triple(TransactionType.DEBIT, "Expense", Color(0xFFE53935)),
+                            Triple(TransactionType.CREDIT, "Income", Color(0xFF43A047)),
+                            Triple(TransactionType.TRANSFER, "Transfer", MaterialTheme.colorScheme.primary)
+                        ).forEach { (type, label, activeColor) ->
+                            val isSelected = selectedType == type
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isSelected) activeColor
+                                        else Color.Transparent
+                                    )
+                                    .clickable {
+                                        selectedType = type
+                                        if (type == TransactionType.DEBIT) {
+                                            selectedCategory = categories.firstOrNull { it.type == "EXPENSE" }
+                                        } else if (type == TransactionType.CREDIT) {
+                                            selectedCategory = categories.firstOrNull { it.type == "INCOME" }
+                                        } else {
+                                            selectedCategory = null
+                                        }
+                                    }
+                                    .padding(vertical = 9.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))

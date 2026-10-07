@@ -18,11 +18,26 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+import com.antigravity.expensetracker.data.settings.SettingsManager
+import kotlinx.coroutines.flow.asStateFlow
+
 class MainViewModel(
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val settingsManager: SettingsManager? = null
 ) : ViewModel() {
+
+    private val _fallbackCurrency = MutableStateFlow("VND")
+    val defaultCurrency: StateFlow<String> = settingsManager?.defaultCurrency ?: _fallbackCurrency.asStateFlow()
+
+    fun setDefaultCurrency(currency: String) {
+        if (settingsManager != null) {
+            settingsManager.setDefaultCurrency(currency)
+        } else {
+            _fallbackCurrency.value = currency.trim().uppercase()
+        }
+    }
 
     val selectedFilter = MutableStateFlow<TransactionType?>(null)
     val searchQuery = MutableStateFlow("")

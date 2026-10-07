@@ -40,6 +40,7 @@ fun AccountsScreen(
     modifier: Modifier = Modifier
 ) {
     val accounts by viewModel.accounts.collectAsState()
+    val defaultCurrency by viewModel.defaultCurrency.collectAsState()
 
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var accountToEdit by remember { mutableStateOf<AccountEntity?>(null) }
@@ -96,6 +97,7 @@ fun AccountsScreen(
     if (showAddAccountDialog) {
         AccountFormDialog(
             initialAccount = null,
+            defaultCurrency = defaultCurrency,
             onDismiss = { showAddAccountDialog = false },
             onSave = { name, type, curr, bal, mask ->
                 viewModel.addAccount(name, type, curr, bal, mask)

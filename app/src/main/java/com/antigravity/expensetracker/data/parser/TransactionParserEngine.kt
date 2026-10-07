@@ -242,7 +242,7 @@ class TransactionParserEngine {
             sym == "£" || fullText.contains("GBP", ignoreCase = true) -> "GBP"
             sym == "₫" || fullText.contains("VND", ignoreCase = true) || fullText.contains("đ") -> "VND"
             sym.isNotEmpty() -> sym
-            else -> "USD"
+            else -> "VND"
         }
     }
 

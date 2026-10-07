@@ -11,7 +11,7 @@ data class AccountEntity(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val type: String, // CHECKING, SAVINGS, CREDIT_CARD, WALLET, CASH
-    val currency: String = "USD",
+    val currency: String = "VND",
     @ColumnInfo(name = "current_balance")
     val currentBalance: Double = 0.0,
     @ColumnInfo(name = "identifier_mask")
