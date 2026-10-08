@@ -10,3 +10,10 @@ captures/
 .externalNativeBuild
 .cxx
 local.properties
+
+# Keystores & Signing Secrets (OWASP M1 Defense)
+*.keystore
+*.jks
+*.p12
+keystore.properties
+google-services.json

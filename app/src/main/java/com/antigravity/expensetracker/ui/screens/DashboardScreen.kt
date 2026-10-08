@@ -97,7 +97,7 @@ fun DashboardScreen(
 
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
 
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(pageCount = { 3 })
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -158,20 +158,25 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Swipeable Header (Swipe right/left between Balance Summary and Category Pie Chart)
+                // Swipeable Header (Swipe right/left between Liquid Summary, Savings Portfolio, and Category Pie Chart)
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxWidth()
                 ) { page ->
-                    if (page == 0) {
-                        SummaryCard(
+                    when (page) {
+                        0 -> SummaryCard(
                             totalBalance = liquidBalance,
                             totalIncome = totalIncome,
                             totalExpenses = totalExpenses,
                             currency = defaultCurrency
                         )
-                    } else {
-                        CategoryPieChartCard(
+                        1 -> SavingsHeaderCard(
+                            savingsBalance = savingsBalance,
+                            holdingCount = savingsAccounts.size,
+                            currency = defaultCurrency,
+                            onClick = { showSavingsPortfolio = true }
+                        )
+                        else -> CategoryPieChartCard(
                             items = expenseBreakdown,
                             currency = defaultCurrency
                         )
@@ -185,7 +190,7 @@ fun DashboardScreen(
                         .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    repeat(2) { pageIndex ->
+                    repeat(3) { pageIndex ->
                         val isSelected = pagerState.currentPage == pageIndex
                         Box(
                             modifier = Modifier
@@ -199,16 +204,6 @@ fun DashboardScreen(
                         )
                     }
                 }
-            }
-
-            // Savings & Investment Header Card (Isolated from liquid balance)
-            item {
-                SavingsHeaderCard(
-                    savingsBalance = savingsBalance,
-                    holdingCount = savingsAccounts.size,
-                    currency = defaultCurrency,
-                    onClick = { showSavingsPortfolio = true }
-                )
             }
 
             // Quick Actions & Search

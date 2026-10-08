@@ -13,6 +13,8 @@ import com.antigravity.expensetracker.data.parser.ParsedOutput
 import com.antigravity.expensetracker.data.parser.TransactionParserEngine
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 class TransactionRepository(
     private val transactionDao: TransactionDao,
@@ -57,7 +59,7 @@ class TransactionRepository(
             currency = parsed.currency,
             type = parsed.type.name,
             counterparty = parsed.counterparty,
-            rawText = fullContent,
+            rawText = sanitizeRawText(fullContent),
             timestamp = postTime,
             status = TransactionStatus.CONFIRMED.name
         )
@@ -161,6 +163,35 @@ class TransactionRepository(
             cp.contains("netflix") || cp.contains("spotify") || cp.contains("cinema") ||
             cp.contains("movie") || cp.contains("game") -> "cat_entertainment_04"
             else -> "cat_bills_05"
+        }
+    }
+
+    companion object {
+        private val CARD_NUMBER_PATTERN = Pattern.compile(
+            "\\b(?:\\d[ -]*?){13,19}\\b"
+        )
+
+        /**
+         * Redacts full credit/debit card numbers from stored raw notifications (OWASP MASVS-STORAGE / PII Protection).
+         * Leaves only the last 4 digits visible (e.g. "**** **** **** 1234").
+         */
+        fun sanitizeRawText(text: String): String {
+            if (text.isBlank()) return text
+            val matcher = CARD_NUMBER_PATTERN.matcher(text)
+            val sb = StringBuffer()
+            while (matcher.find()) {
+                val fullMatch = matcher.group()
+                val digitsOnly = fullMatch.filter { it.isDigit() }
+                if (digitsOnly.length in 13..19) {
+                    val last4 = digitsOnly.takeLast(4)
+                    val masked = "**** **** **** $last4"
+                    matcher.appendReplacement(sb, Matcher.quoteReplacement(masked))
+                } else {
+                    matcher.appendReplacement(sb, Matcher.quoteReplacement(fullMatch))
+                }
+            }
+            matcher.appendTail(sb)
+            return sb.toString()
         }
     }
 }

@@ -17,7 +17,12 @@ class TransactionNotificationListener : NotificationListenerService() {
         super.onNotificationPosted(sbn)
         if (sbn == null) return
 
-        val packageName = sbn.packageName
+        val packageName = sbn.packageName ?: return
+        if (!com.antigravity.expensetracker.data.security.TrustedPackageValidator.isPackageTrusted(packageName)) {
+            // Reject notifications from unauthorized/unrecognized apps (prevents transaction spoofing)
+            return
+        }
+
         val extras = sbn.notification.extras ?: return
 
         val title = extras.getString(Notification.EXTRA_TITLE).orEmpty()

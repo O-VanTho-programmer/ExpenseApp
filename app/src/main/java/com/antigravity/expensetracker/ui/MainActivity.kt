@@ -55,6 +55,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Protect screen content from unauthorized capture and background task switcher caching (MASVS-STORAGE)
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+
         val app = application as ExpenseTrackerApp
         viewModel = ViewModelProvider(this, ViewModelFactory(app))[MainViewModel::class.java]
 

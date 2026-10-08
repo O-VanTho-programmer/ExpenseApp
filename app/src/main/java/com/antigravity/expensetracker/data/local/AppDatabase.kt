@@ -68,14 +68,10 @@ abstract class AppDatabase : RoomDatabase() {
                 .fallbackToDestructiveMigration()
 
             if (useEncryption) {
-                try {
-                    val keyManager = DatabaseKeyManager(context.applicationContext)
-                    val passphrase = keyManager.getDatabasePassphrase()
-                    val factory = SupportFactory(passphrase)
-                    builder.openHelperFactory(factory)
-                } catch (e: Throwable) {
-                    // Fallback to unencrypted in test or unsupported hardware environments
-                }
+                val keyManager = DatabaseKeyManager(context.applicationContext)
+                val passphrase = keyManager.getDatabasePassphrase()
+                val factory = SupportFactory(passphrase)
+                builder.openHelperFactory(factory)
             }
 
             builder.addCallback(object : RoomDatabase.Callback() {

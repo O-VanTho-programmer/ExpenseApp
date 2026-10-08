@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -21,33 +23,51 @@ android {
         }
     }
 
+    val keystoreConfigFile = rootProject.file("keystore.properties")
+    val keystoreProps = Properties()
+    if (keystoreConfigFile.exists()) {
+        keystoreConfigFile.inputStream().use { keystoreProps.load(it) }
+    }
+
+    val keystorePath: String? = System.getenv("KEYSTORE_PATH") ?: keystoreProps.getProperty("KEYSTORE_PATH")
+    val keystorePass: String? = System.getenv("KEYSTORE_PASSWORD") ?: keystoreProps.getProperty("KEYSTORE_PASSWORD")
+    val keyAliasVal: String? = System.getenv("KEY_ALIAS") ?: keystoreProps.getProperty("KEY_ALIAS")
+    val keyPass: String? = System.getenv("KEY_PASSWORD") ?: keystoreProps.getProperty("KEY_PASSWORD")
+
     signingConfigs {
         getByName("debug") {
             enableV1Signing = true
             enableV2Signing = true
         }
-    }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("${rootDir}/release.keystore")
-            storePassword = "expense123"
-            keyAlias = "expense"
-            keyPassword = "expense123"
+        if (!keystorePath.isNullOrBlank() && !keystorePass.isNullOrBlank()) {
+            val keyFile = if (file(keystorePath).isAbsolute) file(keystorePath) else rootProject.file(keystorePath)
+            if (keyFile.exists()) {
+                create("release") {
+                    storeFile = keyFile
+                    storePassword = keystorePass
+                    keyAlias = if (!keyAliasVal.isNullOrBlank()) keyAliasVal else "expense"
+                    keyPassword = if (!keyPass.isNullOrBlank()) keyPass else keystorePass
+                    enableV1Signing = true
+                    enableV2Signing = true
+                }
+            }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            val releaseSigning = signingConfigs.findByName("release")
+            signingConfig = releaseSigning ?: signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

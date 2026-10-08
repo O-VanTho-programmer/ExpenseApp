@@ -3,12 +3,18 @@ package com.antigravity.expensetracker.data.security
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Base64
 import java.security.KeyStore
+import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+/**
+ * Manages the generation and hardware-backed storage of the SQLCipher database encryption key
+ * using the Android KeyStore and AES-256-GCM (OWASP MASVS-CRYPTO / MASVS-STORAGE).
+ */
 class DatabaseKeyManager(private val context: Context) {
 
     private val keyStoreAlias = "ExpenseTrackerDatabaseKeyAlias"
@@ -23,26 +29,32 @@ class DatabaseKeyManager(private val context: Context) {
 
         if (encryptedKeyBase64 != null && ivBase64 != null) {
             try {
-                val encryptedBytes = android.util.Base64.decode(encryptedKeyBase64, android.util.Base64.DEFAULT)
-                val iv = android.util.Base64.decode(ivBase64, android.util.Base64.DEFAULT)
+                val encryptedBytes = Base64.decode(encryptedKeyBase64, Base64.NO_WRAP)
+                val iv = Base64.decode(ivBase64, Base64.NO_WRAP)
                 return decryptKey(encryptedBytes, iv)
             } catch (e: Exception) {
-                // If decryption fails (e.g., keystore invalidated), fallback to generating new or default key
+                // Fail-closed: Never overwrite an existing key on decryption failure,
+                // as doing so would render existing encrypted financial data permanently unrecoverable.
+                throw SecurityException("Failed to decrypt database encryption key with AndroidKeyStore: ${e.message}", e)
             }
         }
 
-        // Generate a new 256-bit passphrase
+        // Generate a new cryptographically secure 256-bit (32 bytes) passphrase
         val rawPassphrase = ByteArray(32)
-        java.security.SecureRandom().nextBytes(rawPassphrase)
+        SecureRandom().nextBytes(rawPassphrase)
 
         try {
             val (encryptedBytes, iv) = encryptKey(rawPassphrase)
-            prefs.edit()
-                .putString(prefEncryptedKey, android.util.Base64.encodeToString(encryptedBytes, android.util.Base64.DEFAULT))
-                .putString(prefIv, android.util.Base64.encodeToString(iv, android.util.Base64.DEFAULT))
-                .apply()
+            val success = prefs.edit()
+                .putString(prefEncryptedKey, Base64.encodeToString(encryptedBytes, Base64.NO_WRAP))
+                .putString(prefIv, Base64.encodeToString(iv, Base64.NO_WRAP))
+                .commit() // Synchronous commit to ensure atomic persistence before DB creation
+
+            if (!success) {
+                throw SecurityException("Failed to persist database encryption key to storage")
+            }
         } catch (e: Exception) {
-            // In unit test or environment without AndroidKeyStore, return rawPassphrase
+            throw SecurityException("Failed to encrypt and store database passphrase: ${e.message}", e)
         }
 
         return rawPassphrase
@@ -62,6 +74,7 @@ class DatabaseKeyManager(private val context: Context) {
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
+                .setRandomizedEncryptionRequired(true)
                 .build()
             keyGenerator.init(spec)
             keyGenerator.generateKey()
